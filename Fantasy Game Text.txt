@@ -1,0 +1,94 @@
+Fantasy Kombat
+
+This challenge is about creating  a game simulation. Don't need to have UI or anything visual.
+
+The goal is just modeling and architecting and small combat game simulation. No inputs are needed as well, you can just mock values from your game bootstrap.
+
+To see whats happening you’ll use Logs to describe every action and result for each step of the simulation. Following the pattern described at the end of this file.
+
+
+
+The game is a cvc combat turn based. (Computer vs computer which every character has its own turn to atack).
+
+The Character must have a name, atack base points, defence, life, luck bonus and speed.
+
+
+Speed: a property to decide which player should atack first. If the speed value is equal, then order should be random for each turn.
+
+Life: amount of points to be reduce for each received damage. If gets 0 value, then the player loses.
+
+Defence: amount of value to subtract from enemy’s total atack to calculate the damage.
+
+Atack: base points to calculate the total atack.
+
+Total atack: atack base points multiplied by a contant.
+
+If is a miss atack, constant is 0
+If is a normal atack, contant is 1
+If is a critical atack, constant is 3
+Miss and critical have 20% of chance and normal 60%.
+
+Luck bonus: is a bonus to be added in the % of critical chance.
+
+The game ends when a player loses, ie when life is 0.
+
+You have 3 days to finish this challenge and send us the git url.
+
+Any useful or pertinent information you can use project readme.md file.
+
+Good luck
+
+
+
+Log pattern:
+
+Start Game
+
+Log players properties
+
+Round (number of round)
+Name inflicts x of damage
+Name2 has y points of life left
+
+Name2 inflicts x of damage
+Name1 has y points of life left
+
+Name winner
+End game
+
+Ps: if attacks is critical or miss, log it before the damage log
+
+
+
+
+Example:
+
+Start GAME
+
+Player1: Midoriya, atack: 10, defence: 3, speed: 50, life: 35, luck: 50
+Player2: Bakugo, atack: 10, defence: 5, speed: 40, life: 50, luck: 0
+
+Round 1
+Critical!
+Midoriya inflicts 25 of damage
+Bakugo has 25 points of life left
+Critical!
+Bakugo inflicts 27 of damage
+Midoriya has 8 points of life left
+
+Round 2
+Miss
+Midoriya inflicts 0 of damage
+Bakugo has 25 points of life left
+Bakugo inflicts 7 of damage
+Midoriya has 1 points of life left
+
+Round 3
+Midoriya inflicts 5 of damage
+Bakugo has 20 points of life left
+Critical!
+Bakugo inflicts 27 of damage
+Midoriya has 0 points of life left
+
+Bakugo wins !!!
+END GAME
