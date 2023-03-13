@@ -28,13 +28,15 @@ enum LoggerLabels {
     }
 }
 
-class Player{
-    var name:String
-    var attack:Int
-    var defence:Int
-    var speed:Int
+class Player {
+    
+    let name:String
+    let attack:Int
+    let defence:Int
+    let speed:Int
     var life:Int
-    var luck:Int
+    let luck:Int
+    
     init(name: String, attack: Int, defence: Int, speed: Int, life: Int, luck: Int) {
         self.name = name
         self.attack = attack
@@ -44,35 +46,44 @@ class Player{
         self.luck = luck
     }
 
+    func reduceLife(by points: Int) {
+        let remainLife = life - points
+        if  remainLife.signum() == -1 {
+            life = 0
+        } else {
+            life = remainLife
+        }
+    }
 }
 
 protocol AttackType {
     var damageMultiplier: Int { get }
     static var chances: Int { get }
-    var label: String { get }
+    static var label: String { get }
 }
 
 class Normal: AttackType {
     let damageMultiplier = 1
     static let chances = 60
-    var label = "normal"
+    static var label = "normal"
 }
 
 class Miss: AttackType {
     let damageMultiplier = 0
     static let chances = 20
-    let label = "miss"
+    static let label = "miss"
 
 }
 
 class Critical: AttackType {
     let damageMultiplier = 3
     static let chances = 20
-    let label = "critical"
+    static let label = "critical"
 
 }
 
 class AttackTypeFactory {
+    
     func create(luckBonus: Int) -> AttackType {
         let start = 0
         let missLimit = start + Miss.chances
@@ -82,30 +93,20 @@ class AttackTypeFactory {
 
         switch random {
         case start..<missLimit:
+            Logger.shared.returnLog(message:Miss.label)
             return Miss()
         case missLimit..<normalLimit:
             return Normal()
         case normalLimit...criticalLimit:
+            Logger.shared.returnLog(message:Critical.label)
             return Critical()
         default:
             return Normal()
         }
     }
-    }
+}
 
-
-class Attack{
-
-    func calculatePlayerRemainLife(playerLife: Int, Inflicts: Int) -> Int {
-        // check if life remain will be less than zero then return zero and life ends for the player
-        let remainLife = playerLife - Inflicts
-        
-        if  remainLife.signum() == -1 {
-            return 0
-        } else {
-            return remainLife
-        }
-    }
+class AttackManager {
     
     func calculateTotalAttack(playerAttack: Int, damage: Int) -> Int {
         return playerAttack * damage
@@ -119,8 +120,19 @@ class Attack{
        return inflicts
     }
 
-    func getStarterPlayer(player1:Player, player2:Player) -> Player {
-        // speed : check if speed between player 1 and 2 and in case of equal return random player to start
+}
+
+class RoundManager {
+    
+    private var roundCounter:Int = 0
+    
+    func showRound() {
+        roundCounter += 1
+        Logger.shared.returnLog(message:"\n")
+        Logger.shared.returnLog(message:"round \(roundCounter)")
+    }
+    
+    func playerWillStartRound(player1:Player, player2:Player) -> Player {
         var startPlayer = player1
         if player1.speed > player2.speed {
             startPlayer = player1
@@ -134,12 +146,38 @@ class Attack{
         }
         return startPlayer
     }
+    
+    func getNextPlayer(player1:Player,player2:Player,toStartPlayer: Player, lifeleft: Int) -> Player {
+        if toStartPlayer === player1 {
+            return setlifeLeftForPlayer(player: player1, lifeLeft: lifeleft)
+        } else {
+            return setlifeLeftForPlayer(player: player2, lifeLeft: lifeleft)
+
+        }
+    }
+    
+    func playersWillExchangeAttack(fplayerInRound:Player,BattlePlayers:(player1:Player,player2:Player),nextPlayer:Player,lifeleft:Int) -> Player? {
+        if lifeleft == 0 {
+            Logger.shared.returnLog(message:LoggerLabels.getWinnerPlayer(playerName:fplayerInRound.name))
+        } else {
+            if playerWillStartRound(player1: BattlePlayers.player1, player2: BattlePlayers.player2) === fplayerInRound {
+                return nextPlayer
+            }
+
+        }
+        return nil
+    }
+    
+    private func setlifeLeftForPlayer(player:Player,lifeLeft:Int) -> Player {
+        player.life = lifeLeft
+        return player
+    }
 }
 
 
 class Battle{
-    private var roundCounter:Int = 0
-    private let attack:Attack = Attack()
+    private let attack:AttackManager = AttackManager()
+    private let round:RoundManager = RoundManager()
     private var player1: Player
     private var player2: Player
     init(player1: Player, player2: Player) {
@@ -148,64 +186,33 @@ class Battle{
         Logger.shared.returnLog(message:"start game \n")
         beginRound()
     }
-    private func beginRound() {
-        let playerToStart = attack.getStarterPlayer(player1: player1, player2: player2)
-        showRound()
+    
+     private func beginRound() {
+        let playerToStart = round.playerWillStartRound(player1: player1, player2: player2)
+        round.showRound()
         beginFight(firstPlayer: playerToStart, secondPlayer: playerToStart === self.player1 ? self.player2 : self.player1)
         if checkGameWillEnd() != true {
             beginRound()
         }
     }
     
-    private func showRound() {
-        roundCounter += 1
-        Logger.shared.returnLog(message:"\n")
-        Logger.shared.returnLog(message:"round \(roundCounter)")
-    }
-
     private func beginFight(firstPlayer: Player, secondPlayer: Player) {
         let attackType = AttackTypeFactory().create(luckBonus: firstPlayer.luck)
-        showAttackType(type: attackType)
-        
         let totalAttack = attack.calculateTotalAttack(playerAttack: firstPlayer.attack, damage: attackType.damageMultiplier)
-        
-        var playerInflicts = attack.calculateInflicts(totalAttack: totalAttack, defence: secondPlayer.defence)
+        let damageToInflicts = attack.calculateInflicts(totalAttack: totalAttack, defence: secondPlayer.defence)
+        Logger.shared.returnLog(message: LoggerLabels.getDamage(playerName: firstPlayer.name, playerInflicts: "\(damageToInflicts)"))
+        secondPlayer.reduceLife(by: damageToInflicts)
+        Logger.shared.returnLog(message: LoggerLabels.getLeftLife(playerName: secondPlayer.name, lifeLeft: "\(secondPlayer.life)"))
 
-        let lifeLeft = attack.calculatePlayerRemainLife(playerLife: secondPlayer.life, Inflicts: playerInflicts)
-        Logger.shared.returnLog(message: LoggerLabels.getDamage(playerName: firstPlayer.name, playerInflicts: "\(playerInflicts)"))
-        Logger.shared.returnLog(message: LoggerLabels.getLeftLife(playerName: secondPlayer.name, lifeLeft: "\(lifeLeft)"))
-        
-        checkPlayerWillAttackAgainOrNot(firstPlayer: firstPlayer, secondPlayer: secondPlayer, lifeLeft: lifeLeft)
-
-    }
-
-    private func showAttackType(type:AttackType) {
-        if type.label != "normal" {
-            Logger.shared.returnLog(message:type.label)
+        let nextPlayer = round.getNextPlayer(player1: player1, player2: player2, toStartPlayer: secondPlayer, lifeleft: secondPlayer.life)
+        if let starterPlayer = round.playersWillExchangeAttack(fplayerInRound: firstPlayer, BattlePlayers: getPlayersInBattle(), nextPlayer: nextPlayer, lifeleft: secondPlayer.life) {
+            beginFight(firstPlayer: starterPlayer, secondPlayer: firstPlayer)
         }
     }
+
     
-    private func checkPlayerWillAttackAgainOrNot(firstPlayer: Player,secondPlayer: Player, lifeLeft: Int) {
-        let nextPlayer = returnNextPlayerToStart(toStartPlayer: secondPlayer, lifeleft: lifeLeft)
-        if lifeLeft == 0 {
-            Logger.shared.returnLog(message:LoggerLabels.getWinnerPlayer(playerName:firstPlayer.name))
-        } else {
-            if attack.getStarterPlayer(player1: player1, player2: player2) === firstPlayer {
-                beginFight(firstPlayer: nextPlayer, secondPlayer: firstPlayer)
-            }
-            
-        }
-    }
-    
-    private func returnNextPlayerToStart(toStartPlayer: Player, lifeleft: Int) -> Player {
-        if toStartPlayer === player1 {
-            player1.life = lifeleft
-            return player1
-        } else {
-            player2.life = lifeleft
-            return player2
-
-        }
+    private func getPlayersInBattle() -> (player1:Player, player2:Player) {
+        return (player1,player2)
     }
     
     private func checkGameWillEnd() -> Bool {
